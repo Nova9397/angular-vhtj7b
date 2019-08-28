@@ -1,0 +1,3691 @@
+
+declare @date as date 
+set @date='20190628'
+
+
+select distinct rm_all1.Basic [Basic],
+rm_all1.Customer_type,
+rm_all1.Emri,
+rm_all1.RM,
+all_all.[Turnover Credit],
+all_all.[Avg Balance],
+all_all.[Incoming Transfers],
+all_all.[Outgoing Transfers],
+all_all.[Fee & Commisions],
+all_all.[FX Transactions],
+all_all.[Loan Exposure] 
+
+
+from (
+
+select all1.* from (
+select*from (
+
+
+select a.account [basic],sum(a.amount) amount, a.descr descr from (
+
+select 
+distinct 
+substring(arr.UniqueIdInSourceSystem,5,6) Account , 
+abs((tr.CashFlowAmount*ex.FixingRate/EXEURO.FixingRate)) Amount 
+,'FX Transactions' descr
+ --month(TransactionBookDate)
+  from [DWHSORTRG]..[Transaction] tr 
+join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+join DWHSORTRG..v_TransactionType vtrt on vtrt.TransactionTypeId=tr.TransactionTypeId
+			join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=tr.TransactionCurrencyId
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = tr.TransactionCurrencyId  and ex.EffectiveDate=@date
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date
+			join ALDWH_SOURCE..SCPF acc on acc.scan= substring(arr.UniqueIdInSourceSystem,5,6)
+			join ALDWH_SOURCE..GFPF cust on cust.GFCPNC=acc.scan
+							
+where   
+
+cust.GFCTP in ('DA','DB','DC','DD','DE','FD','FG','FH','FJ','FM','FP','FQ','FR','FS','CI','CK','CL','CM','CO','CP','DF','DG','DH','BG','BH','BI','BJ','BK','BL','BM','BO','BQ','BR','BS','BT','BU','BV')
+and acc.SCACT in ('CA','CB','CC','CD')
+and tr.TransactionBookDate between '20190101' and '20190630'
+  and vtrt.TransactionTypeCd='140' 
+   and SCAI30<>'Y' and scai17<>'Y' 
+    
+)a
+
+group by a.Account,
+a.descr
+
+
+union 
+
+
+
+select a.Basic [basic] ,sum(a.Amount) [amount] ,a.descr[descr] from (
+
+
+select 
+distinct
+substring(arr.UniqueIdInSourceSystem,5,6) [Basic] , 
+abs(tr.CashFlowAmount*ex.FixingRate/EXEURO.FixingRate) Amount 
+,'Outgoing Transfers' descr
+,tr.TransactionBookDate
+
+
+from  DWHSORTRG..[Transaction] tr
+			
+			join DWHSORTRG..v_TransactionType v_trtype on v_trtype.TransactionTypeId=tr.TransactionTypeId
+			join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+			
+			join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=tr.TransactionCurrencyId
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = tr.TransactionCurrencyId  and ex.EffectiveDate=@date 
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date	
+			join ALDWH_SOURCE..SCPF acc on acc.scan= substring(arr.UniqueIdInSourceSystem,5,6)
+			join ALDWH_SOURCE..GFPF cust on cust.GFCPNC=acc.scan		
+				
+				
+		where tr.TransactionBookDate between '20190101' and '20190630' 
+				and v_trtype.TransactionTypeCd='020' and 
+				cust.GFCTP in ('DA','DB','DC','DD','DE','FD','FG','FH','FJ','FM','FP','FQ','FR','FS','CI','CK','CL','CM','CO','CP','DF','DG','DH','BG','BH','BI','BJ','BK','BL','BM','BO','BQ','BR','BS','BT','BU','BV')
+				and acc.SCACT in ('CA','CB','CC','CD')	
+				and tr.TransactionReference  like '%TO%'
+				and SCAI30<>'Y' and scai17<>'Y' 
+				 
+				
+
+)a
+
+group by a.Basic,
+a.descr
+
+union
+
+
+
+select a.Basic,sum(a.Amount),a.descr from (
+
+
+select 
+distinct
+substring(arr.UniqueIdInSourceSystem,5,6) [Basic] , 
+abs(tr.CashFlowAmount*ex.FixingRate/EXEURO.FixingRate) Amount 
+,'Incoming Transfers' descr
+,tr.TransactionBookDate
+
+
+from  DWHSORTRG..[Transaction] tr
+			
+			join DWHSORTRG..v_TransactionType v_trtype on v_trtype.TransactionTypeId=tr.TransactionTypeId
+			join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+			
+			join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=tr.TransactionCurrencyId
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = tr.TransactionCurrencyId  and ex.EffectiveDate=@date 
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date	
+			join ALDWH_SOURCE..SCPF acc on acc.scan= substring(arr.UniqueIdInSourceSystem,5,6)
+			join ALDWH_SOURCE..GFPF cust on cust.GFCPNC=acc.scan		
+				
+				
+		where tr.TransactionBookDate between '20190101' and '20190630' 
+				and v_trtype.TransactionTypeCd='520' and 
+				cust.GFCTP in ('DA','DB','DC','DD','DE','FD','FG','FH','FJ','FM','FP','FQ','FR','FS','CI','CK','CL','CM','CO','CP','DF','DG','DH','BG','BH','BI','BJ','BK','BL','BM','BO','BQ','BR','BS','BT','BU','BV')
+				and acc.SCACT in ('CA','CB','CC','CD')	
+				and tr.TransactionReference  like '%TI%'
+				and SCAI30<>'Y' and scai17<>'Y' 
+				 
+
+)a 
+
+group by a.Basic,a.descr
+
+
+
+union 
+
+
+
+select b.basic, sum(b.[Loan Exposure]),b.descr from  (
+
+select 
+distinct
+GFCPNC [Basic]
+
+, (acUB.Amount - acUB1.Amount)*ex.FixingRate/EXEURO.FixingRate [Loan Exposure]  -- Loan Last Outstanding
+,'Loan Exposure' descr
+
+
+from DWHSORTRG..LoanArrangement loan
+
+join DWHSORTRG..Arrangement arr on arr.ArrangementId = loan.LoanArrangementId 
+join DWHSORTRG..ProductArrangement prod on prod.ProductArrangementId = loan.LoanArrangementId
+join DWHSORTRG..Customer cust on cust.CustomerId = prod.CustomerId
+join DWHSORTRG..InvolvedParty inv on inv.InvolvedPartyId=cust.CustomerId
+join ALDWH_SOURCE..GFPF on cast(GFCUS+GFCLC as varchar) = inv.UniqueIdInSourceSystem
+join ALDWH_SOURCE..SCPF acc on acc.scan=GFCPNC
+join DWHSORTRG..v_Currency v_ccy on v_ccy.CurrencyId = prod.OriginalCurrencyId
+ left join DWHSORTRG..AccountingUnitBalance acUB on acUB.ArrangementId = loan.LoanArrangementId and acUB.EffectiveDate<=@date  and acUB.EndDate>=@date and acUB.AccountingUnitTypeId='21946' -- kjo eshte id e ENH (Up to date amount)
+ left join DWHSORTRG..v_AccountingUnitType v_acuType on v_acuType.AccountingUnitTypeId=acUB.AccountingUnitTypeId 
+ left join DWHSORTRG..AccountingUnitBalance acUB1 on acUB1.ArrangementId = loan.LoanArrangementId and acUB1.EffectiveDate<=@date  and acUB1.EndDate>=@date and acUB1.AccountingUnitTypeId='21944' -- kjo eshte id e DIN (Overdue Interest)
+ left join DWHSORTRG..v_AccountingUnitType v_acuType1 on v_acuType1.AccountingUnitTypeId=acUB1.AccountingUnitTypeId 
+
+ join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=acUB.CurrencyId
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = ccy.CurrencyId and ex.EffectiveDate=@date
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date
+
+
+
+ 
+ where  GFCTP in ('DA','DB','DC','DD','DE','FD','FG','FH','FJ','FM','FP','FQ','FR','FS','CI','CK','CL','CM','CO','CP','DF','DG','DH','BG','BH','BI','BJ','BK','BL','BM','BO','BQ','BR','BS','BT','BU','BV')
+					and acc.SCACT in ('CA','CB','CC','CD')	and loan.MaturityDate > @date and (acUB.Amount - acUB1.Amount) is not null and   SCAI30<>'Y' and scai17<>'Y'  
+
+)b 
+
+group by b.basic,b.descr
+
+
+
+union all 
+
+select a.Basic,  abs(sum(a.[Loan Exposure])),a.descr from (
+ select 
+ distinct 
+ substring(UniqueIdInSourceSystem,5,6) [Basic]
+
+ ,acub.ClosingBalance *ex.FixingRate/EXEURO.FixingRate  [Loan Exposure]
+  ,'Loan Exposure' descr
+
+  from DWHSORTRG..Arrangement arr
+join DWHSORTRG..AccountingUnitClosingBalance acub on acub.ArrangementId= arr.ArrangementId and acub.EffectiveDate<=@date and acub.EndDate>=@date
+
+ join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=acUB.CurrencyId
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = ccy.CurrencyId and ex.EffectiveDate=@date
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date
+	join ALDWH_SOURCE..SCPF acc on acc.scan= substring(arr.UniqueIdInSourceSystem,5,6)
+			join ALDWH_SOURCE..GFPF cust on cust.GFCPNC=acc.scan	
+where GFCTP in ('DA','DB','DC','DD','DE','FD','FG','FH','FJ','FM','FP','FQ','FR','FS','CI','CK','CL','CM','CO','CP','DF','DG','DH','BG','BH','BI','BJ','BK','BL','BM','BO','BQ','BR','BS','BT','BU','BV')
+					and acc.SCACT in ('CA','CB','CC','CD')
+and acub.ClosingBalance<0  and SCAI30<>'Y' and scai17<>'Y'  
+
+
+
+)a
+
+
+group by a.Basic,a.descr
+
+
+union 
+
+
+select a.account,sum(a.amount),a.descr from (
+
+
+select 
+distinct 
+substring(arr.UniqueIdInSourceSystem,5,6) Account , 
+abs((tr.CashFlowAmount*ex.FixingRate/EXEURO.FixingRate)) Amount 
+,'Fee & Commisions ' descr
+ from [DWHSORTRG]..[Transaction] tr 
+join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+join DWHSORTRG..v_TransactionType vtrt on vtrt.TransactionTypeId=tr.TransactionTypeId
+			join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=tr.TransactionCurrencyId
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = tr.TransactionCurrencyId  and ex.EffectiveDate='20190628'
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = '20190628'
+					join ALDWH_SOURCE..SCPF acc on acc.scan= substring(arr.UniqueIdInSourceSystem,5,6)
+					join ALDWH_SOURCE..GFPF cust on cust.GFCPNC=acc.scan
+where  
+
+cust.GFCTP in ('DA','DB','DC','DD','DE','FD','FG','FH','FJ','FM','FP','FQ','FR','FS','CI','CK','CL','CM','CO','CP','DF','DG','DH','BG','BH','BI','BJ','BK','BL','BM','BO','BQ','BR','BS','BT','BU','BV')
+and acc.SCACT in ('CA','CB','CC','CD')
+and tr.TransactionBookDate between '20190101' and '20190630'
+ and vtrt.TransactionTypeCd in ('161','163','164','166','221','223','224','225','226','227','228','229','231','232','233','234','235','236','237','238','239','247','248','252','258','259','260','261','262','263','264','265','268','269','273','275','276','277') 
+ and SCAI30<>'Y' and scai17<>'Y' 
+   
+
+)a
+
+group by a.Account,a.descr
+
+
+
+union 
+
+
+
+select a.Basic,sum(a.Amount),a.descr from (
+
+select 
+distinct 
+
+substring(arr.UniqueIdInSourceSystem,5,6) [Basic] , 
+tr.AmountEuro  Amount--- duhet amount ne euro
+,'Turnover Credit' descr
+
+
+from [DWHSORTRG]..[Transaction] tr 
+join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+join DWHSORTRG..v_TransactionType vtrt on vtrt.TransactionTypeId=tr.TransactionTypeId
+join ALDWH_SOURCE..SCPF acc on acc.scan= substring(arr.UniqueIdInSourceSystem,5,6)
+			join ALDWH_SOURCE..GFPF cust on cust.GFCPNC=acc.scan		
+
+where tr.CashFlowAmount>0 and 	cust.GFCTP in ('DA','DB','DC','DD','DE','FD','FG','FH','FJ','FM','FP','FQ','FR','FS','CI','CK','CL','CM','CO','CP','DF','DG','DH','BG','BH','BI','BJ','BK','BL','BM','BO','BQ','BR','BS','BT','BU','BV')
+				and acc.SCACT in ('CA','CB','CC','CD')	
+and tr.TransactionBookDate between '20190101' and '20190628'
+and SUBSTRING(tr.UniqueIdInSourceSystem,12,4) <> '@@FX'
+ and SCAI30<>'Y' and scai17<>'Y' 
+    
+
+
+
+)a
+group by a.Basic,a.descr
+
+
+
+
+
+union 
+
+
+select avgbal.basic, sum(avgbal.amount)/month(@date) amount , avgbal.descr descr from ( 
+
+
+select  a.scan [basic],sum(a.amount) amount,a.descr,a.[month]
+ from (
+
+
+select * from (
+select  scan ,
+(abs((avgbal.SRBP01/31/100) * ex.FixingRate/EXEURO.FixingRate)) as [1] ,
+(abs((avgbal.SRBP02/28/100) * ex.FixingRate/EXEURO.FixingRate)) as [2]
+,(abs((avgbal.SRBP03/31/100) * ex.FixingRate/EXEURO.FixingRate)) [3],
+(abs((avgbal.SRBP04/30/100) * ex.FixingRate/EXEURO.FixingRate)) [4],
+(abs((avgbal.SRBP05/31/100) * ex.FixingRate/EXEURO.FixingRate)) [5],
+(abs((avgbal.SRBP06/30/100) * ex.FixingRate/EXEURO.FixingRate)) [6],
+(abs((avgbal.SRBP07/31/100) * ex.FixingRate/EXEURO.FixingRate)) [7],
+(abs((avgbal.SRBP08/31/100) * ex.FixingRate/EXEURO.FixingRate)) [8] ,
+(abs((avgbal.SRBP09/30/100) * ex.FixingRate/EXEURO.FixingRate)) [9] ,
+(abs((avgbal.SRBP10/31/100) * ex.FixingRate/EXEURO.FixingRate)) [10] ,
+(abs((avgbal.SRBP11/30/100) * ex.FixingRate/EXEURO.FixingRate)) [11] ,
+(abs((avgbal.SRBP12/31/100) * ex.FixingRate/EXEURO.FixingRate)) [12] 
+
+,'Avg Balance' descr
+from ALDWH_SOURCE..SCPF acc 
+join (
+
+select  * from openquery (live,'select *  from kfiltir.srpf where SRSMO=''P''and sras >= ''100'' and sras <= ''199'' '))avgbal on avgbal.srab collate SQL_Latin1_General_CP1_CI_AS +avgbal.sran collate SQL_Latin1_General_CP1_CI_AS +avgbal.sras collate SQL_Latin1_General_CP1_CI_AS = scab+scan+scas collate SQL_Latin1_General_CP1_CI_AS
+
+join DWHSORTRG..v_Currency ccy on ccy.CurrencyCd=scccy
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = ccy.CurrencyId and ex.EffectiveDate=@date
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date
+				
+	where			
+scctp in ('DA','DB','DC','DD','DE','FD','FG','FH','FJ','FM','FP','FQ','FR','FS','CI','CK','CL','CM','CO','CP','DF','DG','DH','BG','BH','BI','BJ','BK','BL','BM','BO','BQ','BR','BS','BT','BU','BV')
+				and acc.SCACT in ('CA','CB','CC','CD')	
+ and SCAI30<>'Y' and scai17<>'Y'  
+
+ 
+
+)c
+
+
+unpivot (
+	amount
+	
+	for  [month] in ([1],[2],[3],[4],[5],[6],[7],[8],[9],[10],[11],[12])	
+	
+) as avg_pivot
+
+
+)a
+group by SCAN,descr,[month]
+
+
+)avgbal
+
+where avgbal.[month]<=month(@date)
+
+group by avgbal.basic,avgbal.descr
+
+
+
+
+
+
+
+
+
+
+
+--mbyllja e selectit te pivotit
+)a
+
+pivot (
+
+max(a.amount)   
+for a.descr in ([Turnover Credit],[Outgoing Transfers],[Incoming Transfers],[Fee & Commisions],[Avg Balance],[Loan Exposure],[FX Transactions])
+	
+) AS pivottable1
+
+
+)all1
+
+)all_all 
+join 
+(select rm_all.* from (
+select rm.* from (
+
+SELECT   s.scan as Basic ,SCCTP Customer_type, g.gfcun as Emri , cred_analyst.GQP2D as RM 
+
+
+
+
+  FROM [ALDWH_SOURCE].[dbo].[SCPF] S
+  join [ALDWH_SOURCE].[dbo].[GFPF] G on s.scan = g.gfcpnc
+  left join (select * from openquery (live,'select * from kfiltir.GQ01LF')) cred_analyst
+
+on g.GFP2R = cred_analyst.gqp2r
+  where  
+  ----- sipas organizimit account types te CO-----
+  SCACT in 
+
+  ('CA','CB','CD')
+  
+  
+  --- sipas organizimit customer types te CO-------------
+  and SCCTP in 
+  (
+  'DA',
+'DB',
+'DC',
+'DD',
+'DE',
+'FD',
+'FG',
+'FH',
+'FJ',
+'FM',
+'FP',
+'FQ',
+'FR',
+'FS',
+'CI',
+'CK',
+'CL',
+'CM',
+'CO',
+'CP',
+'DF',
+'DG',
+'DH',
+'AA',
+'AB',
+'AC',
+'AK',
+'AL',
+'AM',
+'AN',
+'BA',
+'BB',
+'BC',
+'BG',
+'BH',
+'BI',
+'BJ',
+'BK',
+'BL',
+'BM',
+'BO',
+'BQ',
+'BR',
+'BS',
+'BT',
+'BU',
+'BV'
+  )
+  
+  
+   
+
+ and SCAI30<>'Y' and scai17<>'Y' 
+  and scai30 = 'N'
+  and s.scoad <> '991112'
+
+  ) rm
+
+  )rm_all) rm_all1 on rm_all1.Basic=all_all.basic
+
+
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  Query 2
+
+
+
+
+  declare @date as date
+set @date='20190630'  -- perdorur per te gjitha kushtet qe kerkojne diten e fundit te muajit
+declare @date1 as date  -- perdorur per te gjitha kushtet qe kerkojne diten e fundit te punes
+set @date1='20190628'
+
+BEGIN 
+    IF OBJECT_ID('tempdb..#loanexposure') IS NOT NULL
+    BEGIN
+        DROP TABLE #loanexposure
+    END
+END 
+
+create table  #loanexposure (
+       [basic] int,
+        [Amount] int,
+		decr varchar (30),
+		[month] int
+    )
+
+DECLARE @counter INT = month(@date1);
+DECLARE @counter1 INT =1
+WHILE @counter >= 0 
+BEGIN
+
+declare @date2 as date 
+
+ INSERT INTO #loanexposure 
+  select lexp.*, month(@date2)from (
+
+
+select 
+
+GFCPNC [Basic]
+
+,((acUB.Amount - acUB1.Amount)*ex.FixingRate/EXEURO.FixingRate) [Amount]  -- Loan Last Outstanding
+,'Loan Exposure' decr
+
+from DWHSORTRG..LoanArrangement loan
+
+join DWHSORTRG..Arrangement arr on arr.ArrangementId = loan.LoanArrangementId 
+join DWHSORTRG..ProductArrangement prod on prod.ProductArrangementId = loan.LoanArrangementId
+join DWHSORTRG..Customer cust on cust.CustomerId = prod.CustomerId
+join DWHSORTRG..InvolvedParty inv on inv.InvolvedPartyId=cust.CustomerId
+join ALDWH_SOURCE..GFPF on cast(GFCUS+GFCLC as varchar) = inv.UniqueIdInSourceSystem
+join DWHSORTRG..v_Currency v_ccy on v_ccy.CurrencyId = prod.OriginalCurrencyId
+ left join DWHSORTRG..AccountingUnitBalance acUB on acUB.ArrangementId = loan.LoanArrangementId and acUB.EffectiveDate<=@date2  and acUB.EndDate>=@date2 and acUB.AccountingUnitTypeId='21946' -- kjo eshte id e ENH (Up to date amount)
+ left join DWHSORTRG..v_AccountingUnitType v_acuType on v_acuType.AccountingUnitTypeId=acUB.AccountingUnitTypeId 
+ left join DWHSORTRG..AccountingUnitBalance acUB1 on acUB1.ArrangementId = loan.LoanArrangementId and acUB1.EffectiveDate<=@date2  and acUB1.EndDate>=@date2 and acUB1.AccountingUnitTypeId='21944' -- kjo eshte id e DIN (Overdue Interest)
+ left join DWHSORTRG..v_AccountingUnitType v_acuType1 on v_acuType1.AccountingUnitTypeId=acUB1.AccountingUnitTypeId 
+
+ join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=acUB.CurrencyId
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = ccy.CurrencyId and ex.EffectiveDate=@date1
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date1
+
+
+
+ 
+ where inv.UniqueIdInSourceSystem in 
+('1027570','1431045','1216886','1404981','1030865','1431059','1397966','1400279','1397910','1421014','1400267','1429054','1431243','302320','301730','1429049','1432573','1405868','1432037','1397616','1428568','1430477','300813')
+ and loan.MaturityDate > @date2 and (acUB.Amount - acUB1.Amount) is not null 
+
+
+
+
+
+union all 
+
+
+ select 
+ substring(UniqueIdInSourceSystem,5,6) [Basic]
+
+ ,(acub.ClosingBalance) [Amount]
+  ,'Loan Exposure' decr
+
+  from DWHSORTRG..Arrangement arr
+join DWHSORTRG..AccountingUnitClosingBalance acub on acub.ArrangementId= arr.ArrangementId and acub.EffectiveDate<=@date2 and acub.EndDate>=@date2
+where substring(UniqueIdInSourceSystem,5,6) in  (
+'319194','302320','319146','307454','319122','319213','319705','319877','319910','319911','319915','319121','319933','300813','319900','319948','319119','319867','319878','301730','307233','315064','319145'
+)
+and acub.ClosingBalance<0
+
+
+)lexp
+set @date2=dateadd(mm,-@counter1,DATEADD (dd, -1, DATEADD(mm, DATEDIFF(mm, 0, GETDATE()) + 1, 0))); --formula qe nxje
+set @counter1=@counter1 +1  
+SET @counter = @counter -1  
+
+--END WHILE
+END
+
+
+
+
+
+
+select* from (
+
+select  a.[Basic],a.amount,a.descr,a.[month] from (
+
+--TURNOVER CREDIT
+
+select 
+
+
+substring(arr.UniqueIdInSourceSystem,5,6) [Basic] , 
+tr.AmountEuro amount,  --- duhet amount ne euro,
+'Turnover Credit' descr 
+,MONTH(tr.TransactionBookDate) [month]
+
+
+from [DWHSORTRG]..[Transaction] tr 
+join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+join DWHSORTRG..v_TransactionType vtrt on vtrt.TransactionTypeId=tr.TransactionTypeId
+where tr.CashFlowAmount>0 and  substring(arr.UniqueIdInSourceSystem,5,6) 
+
+in
+(
+'319194','302320','319146','307454','319122','319213','319705','319877','319910','319911','319915','319121','319933','300813','319900','319948','319119','319867','319878','301730','307233','315064','319145'
+)
+and tr.TransactionBookDate between '20190101' and @date
+and SUBSTRING(tr.UniqueIdInSourceSystem,12,4) <> '@@FX'
+
+
+
+union all 
+
+--Incoming Transfers
+
+
+select 
+substring(arr.UniqueIdInSourceSystem,5,6) [Basic] , 
+abs(tr.CashFlowAmount*ex.FixingRate/EXEURO.FixingRate) Amount 
+,'Incoming Transfers' descr
+,MONTH(tr.TransactionBookDate) [month]
+
+
+from  DWHSORTRG..[Transaction] tr
+			
+			join DWHSORTRG..v_TransactionType v_trtype on v_trtype.TransactionTypeId=tr.TransactionTypeId
+			join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+			join DWHSORTRG..AccountingUnitClosingBalance aub on aub.ArrangementId=arr.ArrangementId
+					and aub.EffectiveDate<= @date and aub.EndDate>= @date 
+			join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=aub.CurrencyId
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = tr.TransactionCurrencyId  and ex.EffectiveDate=@date1 
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date1	
+				
+				
+				
+				where tr.TransactionBookDate between '20190101' and @date
+				 and v_trtype.TransactionTypeCd='520' and substring(arr.UniqueIdInSourceSystem,5,6) 
+
+in
+(
+'319194','302320','319146','307454','319122','319213','319705','319877','319910','319911','319915','319121','319933','300813','319900','319948','319119','319867','319878','301730','307233','315064','319145'
+)
+				 and tr.TransactionReference  like '%TI%'
+
+
+union all 
+
+--Outgoing TRANSFER
+
+select 
+substring(arr.UniqueIdInSourceSystem,5,6) Account , 
+abs(tr.CashFlowAmount*ex.FixingRate/EXEURO.FixingRate) amount,
+--MONTH(tr.TransactionBookDate) [month]
+'Outgoing Transfers' descr
+,MONTH(tr.TransactionBookDate) [month]
+
+from  DWHSORTRG..[Transaction] tr
+			
+			 join DWHSORTRG..v_TransactionType v_trtype on v_trtype.TransactionTypeId=tr.TransactionTypeId
+
+
+			 left join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+
+			 left join DWHSORTRG..AccountingUnitClosingBalance aub on aub.ArrangementId=arr.ArrangementId
+					and aub.EffectiveDate<= @date1 and aub.EndDate>= @date1 
+			left join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=aub.CurrencyId
+			left join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = tr.TransactionCurrencyId  and ex.EffectiveDate=@date1
+			left JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			left JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date1
+				
+				
+where tr.TransactionBookDate between '20190101' and @date
+				 and v_trtype.TransactionTypeCd='020' and 
+				 substring(arr.UniqueIdInSourceSystem,5,6) 
+
+in
+(
+'319194','302320','319146','307454','319122','319213','319705','319877','319910','319911','319915','319121','319933','300813','319900','319948','319119','319867','319878','301730','307233','315064','319145'
+)
+				  and tr.TransactionReference  like '%TO%'
+
+
+
+
+ union all
+
+
+
+
+ --FEE AND COMMISIONS
+
+select 
+substring(arr.UniqueIdInSourceSystem,5,6) Account , 
+abs(tr.CashFlowAmount*ex.FixingRate/EXEURO.FixingRate) Amount 
+,'Fee & Commisions ' descr
+,MONTH(tr.TransactionBookDate) [month]
+ from [DWHSORTRG]..[Transaction] tr 
+join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+join DWHSORTRG..v_TransactionType vtrt on vtrt.TransactionTypeId=tr.TransactionTypeId
+			join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=tr.TransactionCurrencyId
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = tr.TransactionCurrencyId  and ex.EffectiveDate=@date1
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE =@date1
+				
+where   substring(arr.UniqueIdInSourceSystem,5,6) 
+
+in
+(
+'319194','302320','319146','307454','319122','319213','319705','319877','319910','319911','319915','319121','319933','300813','319900','319948','319119','319867','319878','301730','307233','315064','319145'
+)
+and tr.TransactionBookDate between '20190101' and @date
+ and vtrt.TransactionTypeCd in ('161','163','164','166','221','223','224','225','226','227','228','229','231','232','233','234','235','236','237','238','239','247','248','252','258','259','260','261','262','263','264','265','268','269','273','275','276','277') 
+
+
+union all 
+
+
+select * from ( 
+
+
+select  a.scan,a.amount,a.descr,a.[month]
+ from (
+
+
+select * from (
+select  scan ,
+(abs((avgbal.SRBP01/31/100) * ex.FixingRate/EXEURO.FixingRate)) as [1] ,
+(abs((avgbal.SRBP02/28/100) * ex.FixingRate/EXEURO.FixingRate)) as [2]
+,(abs((avgbal.SRBP03/31/100) * ex.FixingRate/EXEURO.FixingRate)) [3],
+(abs((avgbal.SRBP04/30/100) * ex.FixingRate/EXEURO.FixingRate)) [4],
+(abs((avgbal.SRBP05/31/100) * ex.FixingRate/EXEURO.FixingRate)) [5],
+(abs((avgbal.SRBP06/30/100) * ex.FixingRate/EXEURO.FixingRate)) [6],
+(abs((avgbal.SRBP07/31/100) * ex.FixingRate/EXEURO.FixingRate)) [7],
+(abs((avgbal.SRBP08/31/100) * ex.FixingRate/EXEURO.FixingRate)) [8] ,
+(abs((avgbal.SRBP09/30/100) * ex.FixingRate/EXEURO.FixingRate)) [9] ,
+(abs((avgbal.SRBP10/31/100) * ex.FixingRate/EXEURO.FixingRate)) [10] ,
+(abs((avgbal.SRBP11/30/100) * ex.FixingRate/EXEURO.FixingRate)) [11] ,
+(abs((avgbal.SRBP12/31/100) * ex.FixingRate/EXEURO.FixingRate)) [12] 
+
+,'Avg Balance' descr
+from ALDWH_SOURCE..SCPF acc 
+join (
+
+select  * from openquery (live,'select *  from kfiltir.srpf where sran in (''319194'',''302320'',''319146'',''307454'',''319122'',''319213'',''319705'',''319877'',''319910'',''319911'',''319915'',''319121'',''319933'',''300813'',''319900'',''319948'',''319119'',''319867'',''319878'',''301730'',''307233'',''315064'',''319145''
+) and SRBP04<>0 and SRSMO=''P''and sras >= ''100'' and sras <= ''199'' '))avgbal on avgbal.srab collate SQL_Latin1_General_CP1_CI_AS +avgbal.sran collate SQL_Latin1_General_CP1_CI_AS +avgbal.sras collate SQL_Latin1_General_CP1_CI_AS = scab+scan+scas collate SQL_Latin1_General_CP1_CI_AS
+
+join DWHSORTRG..v_Currency ccy on ccy.CurrencyCd=scccy
+			join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = ccy.CurrencyId and ex.EffectiveDate=@date1
+			JOIN DWHSORTRG..V_CURRENCY CCYEURO ON CCYEURO.CURRENCYCD = 'EUR' 
+			JOIN DWHSORTRG..EXCHANGERATE EXEURO ON EXEURO.SECONDCURRENCYID = CCYEURO.CURRENCYID 
+										AND EXEURO.EFFECTIVEDATE = @date1
+				
+
+where scan in (
+'319194','302320','319146','307454','319122','319213','319705','319877','319910','319911','319915','319121','319933','300813','319900','319948','319119','319867','319878','301730','307233','315064','319145'
+)
+
+
+)c
+
+
+unpivot (
+	amount
+	
+	for  [month] in ([1],[2],[3],[4],[5],[6],[7],[8],[9],[10],[11],[12])	
+	
+) as avg_pivot
+
+
+)a
+
+)avgbal
+
+where avgbal.[month]<=month(@date1)
+
+
+union all 
+
+select * from #loanexposure  --select te dhenat nga tabela temporare qe krijon dhe mbush ne fillim te queryt
+
+
+)a               -- select a i pare, te gjitha union e query-ve behen brenda ketij selekti
+
+
+
+)a                --selecti i pivotit
+
+
+
+pivot (
+
+sum(a.amount)   
+for a.descr in ([Turnover Credit],[Outgoing Transfers],[Incoming Transfers],[Fee & Commisions],[Avg Balance],[Loan Exposure])
+	
+) AS pivottable1
+
+
+
+
+
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  Query 3
+
+
+
+  
+IF OBJECT_ID('tempdb..#businessdate') IS NOT NULL
+/*Then it exists*/
+DROP TABLE #businessdate
+
+
+IF OBJECT_ID('tempdb..#tab') IS NOT NULL
+/*Then it exists*/
+DROP TABLE #tab
+
+create table #businessdate
+(
+nr int,
+dite date
+)
+
+insert into #businessdate
+select row_number()
+    OVER ( order by Businessdate) nr  ,businessdate from DWHADMIN..v_FlowCalendar
+
+create table #tab
+(
+acc nvarchar(35),
+accstatus varchar(13),
+statusdate date,
+acc1 nvarchar(35),
+accstatus1 varchar(13),
+statusdate1 date
+)
+
+
+
+--declare @date as date
+--set @date = '20180903'
+
+declare @lastday_EOM as date
+set @lastday_EOM= (SELECT max([BusinessDate])FROM [DWHADMIN].[dbo].[v_FlowCalendar] where year(BusinessDate) = year(@date) and month(BusinessDate) = month(@date))
+
+
+declare @numri as int
+set @numri = (select nr from #businessdate where dite = @date )
+
+WHILE @numri <= (select nr from #businessdate where dite = @lastday_EOM)
+BEGIN
+
+insert into #tab 
+select 
+arr.UniqueIdInSourceSystem [Accountd]
+,arrstatus.NameEnglish [Account Statusd]
+,(select dite from #businessdate where nr=@numri-1) [Status Dated]
+,b.Account1,b.[Account Status1],b.[Status Date1]
+--,arrxclass.*,arrstatus.NameEnglish 
+
+from DWHSORTRG..Arrangement arr
+join DWHSORTRG..ArrangementXClassification arrxclass  
+											on arr.ArrangementId = arrxclass.ArrangementId  
+											and arrxclass.ClassificationSchemeId = 14
+                                            ---and UniqueIdInSourceSystem = '0140588970001'
+											and arrxclass.EffectiveDate <=(select dite from #businessdate where nr=@numri-1) and arrxclass.EndDate >= (select dite from #businessdate where nr=@numri-1) 
+											
+join DWHSORTRG..v_ArrangementLifeCycleStatus arrstatus on arrstatus.ArrangementLifeCycleStatusId = arrxclass.ClassificationId
+                                            and arrstatus.ArrangementLifeCycleStatusCd = 'D'
+
+join  (select 
+arr.UniqueIdInSourceSystem [Account1]
+,arrstatus.NameEnglish [Account Status1]
+,(select dite from #businessdate where nr=@numri) [Status Date1]
+--,arrxclass.*,arrstatus.NameEnglish 
+from DWHSORTRG..Arrangement arr
+join DWHSORTRG..ArrangementXClassification arrxclass  
+											on arr.ArrangementId = arrxclass.ArrangementId  
+											and arrxclass.ClassificationSchemeId = 14
+                                            ---and UniqueIdInSourceSystem = '0140588970001'
+											and arrxclass.EffectiveDate <= (select dite from #businessdate where nr=@numri) and arrxclass.EndDate >=  (select dite from #businessdate where nr=@numri)
+											
+join DWHSORTRG..v_ArrangementLifeCycleStatus arrstatus on arrstatus.ArrangementLifeCycleStatusId = arrxclass.ClassificationId
+                                            and arrstatus.ArrangementLifeCycleStatusCd = 'A') b on b.[Account1] = arr.UniqueIdInSourceSystem
+										
+											
+
+
+SET @numri = @numri+1
+end
+
+
+select * from #tab
+
+
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  Query 4
+
+select 
+count(distinct a.saab+a.saan+a.saas) [Customer Account]
+, case when 	acc.SCACT ='EN' then 'Economic Aid'
+	else 'Payroll' end  [Customer Type]
+
+
+----,a.sgnr1 [Customer Transac Ref]
+
+, case when c.SCCTP in ('DA','DB','DC','DD','DF','DG','DH','FD','FJ','FM','FG','FR','FS') then 'Public institution'
+	when c.SCCTP in ('BG','BM','BI','BO','CI','CL','CO') then 'Private Company'
+	--when SUBSTRING(b.SGNR1,13,4) in ('2275','2504','1505','2864','2498','2678','2497','2499','2437','2569','3870','3871','3899','3900','3882','2366','2367','2368','2369','2370','2371','2372','1369','1661','1436','1602','1609','2633','1958','1959','1960','1961','1962','802','1405','1448','1449','2090','2091','2092','2095','1905','2873','2874','1482','1468','1704','1490','1701','1703','1865','2534','2356','3013') then 'Economic Aid'
+	else '' end 
+	[Company Type]
+
+
+from 
+
+
+
+(
+
+(select saab,saan,saas,sgnr1,saama,sapod,satcd from openquery(live,'select * from kfiltir.sapf
+					
+						left join kfiltir.SGPF on SGBRNM=SABRNM and SGPOD=SAPOD and SAPBR=SGPBR and SGPSQ=SAPSQ
+						and satcd=''652''  and sapod like ''1190215%'' 
+					'))a
+
+
+
+
+ left join 
+ (select PRS01CACB,PRS01CACN,PRS01CACS,sgnr1,sapbr from openquery (live,'Select * from PAYROLLALB.PRSP01 
+											
+		join kfiltir.sapf on saab = PRS01CACB and saan = PRS01CACN and saas=PRS01CACS
+
+					 join kfiltir.SGPF on SGBRNM=SABRNM and SGPOD=SAPOD and SAPBR=SGPBR and SGPSQ=SAPSQ
+				
+									and sapbr=''PRS'' and sapod like ''1190215%''	 '))b 
+										
+										on a.sgnr1=b.sgnr1 
+										
+									
+						)			
+									
+									
+			 join ALDWH_SOURCE..SCPF  acc on acc.SCAB=a.saab collate SQL_Latin1_General_CP1_CI_AS and acc.scan=a.saan collate SQL_Latin1_General_CP1_CI_AS and acc.scas=a.saas	collate SQL_Latin1_General_CP1_CI_AS and acc.SCACT in ('EC','EN')			
+
+			left join (select * from ALDWH_SOURCE..SCPF acc1 
+									join (select PRS01CACB,PRS01CACN,PRS01CACS from openquery (live,'Select * from PAYROLLALB.PRSP01')) accp
+									on acc1.SCAB=accp.PRS01CACB collate SQL_Latin1_General_CP1_CI_AS and acc1.scan=accp.PRS01CACN  collate SQL_Latin1_General_CP1_CI_AS and acc1.scas = accp.PRS01CACS collate SQL_Latin1_General_CP1_CI_AS)c
+
+									on c.SCAB=b.PRS01CACB collate SQL_Latin1_General_CP1_CI_AS and c.scan=b.PRS01CACN collate SQL_Latin1_General_CP1_CI_AS and c.scas=b. PRS01CACS collate SQL_Latin1_General_CP1_CI_AS
+			
+		
+						
+		
+		
+		--where a.sapod like '11901%' 
+		
+		
+									
+			 group by
+case when 	acc.SCACT ='EN' then 'Economic Aid'
+	else 'Payroll' end  
+
+
+----,a.sgnr1 [Customer Transac Ref]
+
+, case when c.SCCTP in ('DA','DB','DC','DD','DF','DG','DH','FD','FJ','FM','FG','FR','FS') then 'Public institution'
+	when c.SCCTP in ('BG','BM','BI','BO','CI','CL','CO') then 'Private Company'
+	--when SUBSTRING(b.SGNR1,13,4) in ('2275','2504','1505','2864','2498','2678','2497','2499','2437','2569','3870','3871','3899','3900','3882','2366','2367','2368','2369','2370','2371','2372','1369','1661','1436','1602','1609','2633','1958','1959','1960','1961','1962','802','1405','1448','1449','2090','2091','2092','2095','1905','2873','2874','1482','1468','1704','1490','1701','1703','1865','2534','2356','3013') then 'Economic Aid'
+	else '' end 
+
+
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  Query 5
+
+
+select distinct 
+count(tr.UniqueIdInSourceSystem) [Tr Code Count]
+,
+
+left(a.account,4)  [Input branch],
+
+case when v_trtype.TransactionTypeCd in ('266','267','221','239') then 'Loan Comm'
+
+	when  v_trtype.TransactionTypeCd in ('270','271','281','282') then 'Service Fee Comm'
+	when  v_trtype.TransactionTypeCd in ('092','254','255','163') then 'Debit Cards Comm'
+	when  v_trtype.TransactionTypeCd in ('226',' 227',' 228',' 232 ',' 233',' 237',' 238',
+	'247','248',' 252',' 253',' 254',' 258 ',' 259',' 260',' 261 ',' 262',' 263',' 264',
+	' 265',' 268 ','269',' 272',' 273',' 274',' 275',' 276',' 277',' 278',' 279',' 420',
+	' 425',' 911',' 920',' 925',' 257',' 161',' 164',' 166 ') then 'Other Comm' end [Transaction Type]
+-- Exchange Amount in EURO
+,sum(CashFlowAmount*ex.FixingRate/exeuro.FixingRate) [Amount Euro] 
+
+
+
+from  DWHSORTRG..[Transaction] tr 
+			join DWHSORTRG..v_TransactionType v_trtype on v_trtype.TransactionTypeId=tr.TransactionTypeId
+			join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId
+			
+			------Heqim llogarite e stafit 095------
+			join (select  case when len (arr.UniqueIdInSourceSystem) > 13 then left(tr.UniqueIdInSourceSystem,13)
+							else arr.UniqueIdInSourceSystem end    account 
+							,tr.TransactionId
+									from DWHSORTRG..[Transaction] tr
+									join DWHSORTRG..Arrangement arr on arr.ArrangementId=tr.PrimaryArrangementId  ) a on a.TransactionId=tr.TransactionId  
+			 join DWHSORTRG..AccountingUnitClosingBalance aub on aub.ArrangementId=arr.ArrangementId
+			and aub.EffectiveDate<= '20190531' and aub.EndDate>= '20190531'   
+	join DWHSORTRG..v_Currency ccy on ccy.CurrencyId=aub.CurrencyId
+ inner join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = tr.TransactionCurrencyId and ex.EffectiveDate <= tr.TransactionBookDate and  ex.EndDate >= tr.TransactionBookDate 
+ inner join DWHSORTRG..ExchangeRate exeuro on exeuro.EffectiveDate = tr.TransactionBookDate and exeuro.SecondCurrencyId = '21738'
+
+
+where
+
+ convert(varchar,  tr.TransactionBookDate, 112) like '201905%' 
+ 
+ and 
+ 
+ right(a.account,3) <> '095' 
+				  and right(arr.UniqueIdInSourceSystem,3) between '001' and '099'
+
+and v_trtype.TransactionTypeCd in ('266','267','221','239','270','271','281','282','092','254','255','163','226',' 227',' 228',' 232 ',' 233',' 237',' 238','247','248',' 252',' 253',' 254',' 258 ',' 259',' 260',' 261 ',' 262',' 263',' 264',' 265',' 268 ','269',' 272',' 273',' 274',' 275',' 276',' 277',' 278',' 279',' 420',' 425',' 911',' 920',' 925',' 257',' 161',' 164',' 166 ')
+
+group by 
+
+left(a.account,4)  
+,case when v_trtype.TransactionTypeCd in ('266','267','221','239') then 'Loan Comm'
+	when  v_trtype.TransactionTypeCd in ('270','271','281','282') then 'Service Fee Comm'
+	when  v_trtype.TransactionTypeCd in ('092','254','255','163') then 'Debit Cards Comm'
+	when  v_trtype.TransactionTypeCd in ('226',' 227',' 228',' 232 ',' 233',' 237',' 238',
+	'247','248',' 252',' 253',' 254',' 258 ',' 259',' 260',' 261 ',' 262',' 263',' 264',
+	' 265',' 268 ','269',' 272',' 273',' 274',' 275',' 276',' 277',' 278',' 279',' 420',
+	' 425',' 911',' 920',' 925',' 257',' 161',' 164',' 166 ') then 'Other Comm' end
+
+
+union all 
+
+select 
+count(concat (a.sabrnm,a.sapod,a.sapbr,sapsq)  collate SQL_Latin1_General_CP1_CI_AS) [Transaction Code] ,
+
+--CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(a.sapod))  collate SQL_Latin1_General_CP1_CI_AS , 2, 6), 112) [Transaction Date],
+a.sabrnd  collate SQL_Latin1_General_CP1_CI_AS,
+'Transfer Fee' descr,
+sum((saama/100)*ex.FixingRate/exeuro.FixingRate)   Amount_Euro
+
+ from openquery(live,'Select * from kfiltir.sapf where saan in ( ''910000'',''911600'',''911610'') ')a
+
+join DWHSORTRG..v_Currency ccy on ccy.CurrencyCd collate SQL_Latin1_General_CP1_CI_AS = a.saccy collate SQL_Latin1_General_CP1_CI_AS
+
+  join DWHSORTRG..ExchangeRate ex on ex.SecondCurrencyId = ccy.CurrencyId and  ex.EffectiveDate <=  CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(a.sapod)), 2, 6), 112) and  ex.EndDate >=  CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(a.sapod)), 2, 6), 112)
+ inner join DWHSORTRG..ExchangeRate exeuro on exeuro.EffectiveDate =   CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(a.sapod)), 2, 6), 112) and exeuro.SecondCurrencyId = '21738'
+
+
+  where 
+  a.sapod like '11905%'
+
+  group by 
+
+
+  CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(a.sapod))  collate SQL_Latin1_General_CP1_CI_AS, 2, 6), 112),
+a.sabrnd 
+
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  Query 6
+
+
+select 
+distinct 
+
+case when account.scas >= 200 then arr2.UniqueIdInSourceSystem
+ else arr.UniqueIdInSourceSystem end [Deal Or Account]
+, 
+case when scai30 = 'Y' or scai30 is null then 'C'
+                                   when scai20 = 'Y' then 'D' 
+	                               else 'A' end 
+
+ --case when v5dlp is null then 
+	   
+	--   else  case when CASE  WHEN LTRIM(RTRIM(account.SCOAD)) = '0' THEN ''
+	--		    WHEN LTRIM(RTRIM(account.SCOAD)) = '' THEN ''
+	--		    WHEN LTRIM(RTRIM(account.SCOAD)) IS NULL THEN ''
+	--		    WHEN LEN(LTRIM(RTRIM(account.SCOAD))) = 6 THEN CONVERT(DATE, '19' + LTRIM(RTRIM(account.SCOAD)), 112)
+	--		    WHEN account.SCOAD = '991112' THEN '1999-11-12'
+	--		    --when account.SCOAD = '990101'
+	--		    ELSE CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(account.SCOAD)), 2, 6), 112)
+ --   END > '20171024' then 'A' else coalesce(arrstatus.ArrangementLifeCycleStatusCd,'C') end
+	
+	 [Account Status]
+--,accunit.Amount
+--joinaccount.CR6QA,
+--joinaccount.CR1D5A,
+--joinaccount.IPIDCRA [CRS JOIN],
+,invparty.IPIDCRA [CRS]
+,CRD9A [First Name]
+,CRDAA [Last Name]
+,CRDBA [Father Name]
+----,invparty.CRCTA [Branch Crs]
+,inv2.InvolvedPartyName [Account Officier 1]
+,class.NameEnglish [Account Officier 2]
+,CRS35P.CR9QA [Identitification Type]
+,CRS35P.CRGEA [Identitification Nr]
+,CRS35P.CRGGA [Issue Country]
+----,invparty.CRCVA [Type]
+,indv.CRDOA [Citizenship]
+,indv.CRDXA [Nationality]
+,indv.CR123A [Residence]
+,isnull(c.CRSTA,'') [Birthplace]
+,account.SCAB  [Branch]
+,account.scan  [Basic]
+,account.SCAS  [Suffix]
+, SCCCY [Currency]
+, d.Amount [Amount]
+,CASE  
+               WHEN LTRIM(RTRIM(account.SCOAD)) = '0' THEN ''
+			    WHEN LTRIM(RTRIM(account.SCOAD)) = '' THEN ''
+			    WHEN LTRIM(RTRIM(account.SCOAD)) IS NULL THEN ''
+			    WHEN LEN(LTRIM(RTRIM(account.SCOAD))) = 6 THEN CONVERT(DATE, '19' + LTRIM(RTRIM(account.SCOAD)), 112)
+			    WHEN account.SCOAD = '991112' THEN '1999-11-12'
+			    --when account.SCOAD = '990101'
+			    ELSE
+				
+				 CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(account.SCOAD)), 2, 6), 112)
+    END [Account open date]                   
+
+,
+case when account.scas >= 200 then  CASE  WHEN LTRIM(RTRIM(V5MDT)) = '0' THEN ''
+			    WHEN LTRIM(RTRIM(V5MDT)) = '' THEN ''
+			    WHEN LTRIM(RTRIM(V5MDT)) IS NULL THEN ''
+			    WHEN LEN(LTRIM(RTRIM(V5MDT))) = 6 THEN CONVERT(DATE, '19' + LTRIM(RTRIM(V5MDT)), 112)
+			    WHEN V5MDT = '991112' THEN '1999-11-12'
+				WHEN V5MDT = '9999999' THEN '9999-12-31'
+			    --when account.SCOAD = '990101'
+			    ELSE CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(V5MDT)), 2, 6), 112)
+    END
+
+else 
+CASE  
+      WHEN LTRIM(RTRIM(SCCAD)) = '0' THEN ''
+      WHEN LTRIM(RTRIM(SCCAD)) = '' THEN ''
+      WHEN LTRIM(RTRIM(SCCAD)) IS NULL THEN ''
+      WHEN LEN(LTRIM(RTRIM(SCCAD))) = 6 THEN CONVERT(DATE, '19' + LTRIM(RTRIM(SCCAD)), 112)
+      WHEN account.SCCAD = '991112 ' THEN '1999-11-12'
+      ELSE CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(SCCAD)), 2, 6), 112)
+END
+
+-- case when case when CASE  WHEN LTRIM(RTRIM(account.SCOAD)) = '0' THEN ''
+--			    WHEN LTRIM(RTRIM(account.SCOAD)) = '' THEN ''
+--			    WHEN LTRIM(RTRIM(account.SCOAD)) IS NULL THEN ''
+--			    WHEN LEN(LTRIM(RTRIM(account.SCOAD))) = 6 THEN CONVERT(DATE, '19' + LTRIM(RTRIM(account.SCOAD)), 112)
+--			    WHEN account.SCOAD = '991112' THEN '1999-11-12'
+--			    --when account.SCOAD = '990101'
+--			    ELSE CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(account.SCOAD)), 2, 6), 112)
+--    END > '20171024' then 'A' else coalesce(arrstatus.ArrangementLifeCycleStatusCd,'C') end = 'C' then 
+
+--CASE  
+--      WHEN LTRIM(RTRIM(account.SCDLM)) = '0' THEN ''
+--      WHEN LTRIM(RTRIM(account.SCDLM)) = '' THEN ''
+--      WHEN LTRIM(RTRIM(account.SCDLM)) IS NULL THEN ''
+--      WHEN LEN(LTRIM(RTRIM(account.SCDLM))) = 6 THEN CONVERT(DATE, '19' + LTRIM(RTRIM(account.SCDLM)), 112)
+--      WHEN account.SCCAD = '991112 ' THEN '1999-11-12'
+--      ELSE CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(account.SCDLM)), 2, 6), 112)
+--END else '' end end
+
+
+ end [Account close date]    
+,tel.tel [Telephone]
+,isnull(kontaktinfo.HOM,'') [Address residence]
+,isnull(kontaktinfo.MAL,'') [Address correspondence]
+--,isnull(kontaktinfo.OFC,'') [Add work]
+--,concat(isnull(kontaktinfo.EGK,''),isnull(kontaktinfo.EDR,'')) [Add headquarters]
+,isnull(b.crsta,'') [Signed]
+,isnull(fatca.CRSTA,'') [Fatca Status]
+,isnull(fatca.CRQRA,'') [Valid From]
+
+--,kontaktinfo.*
+--,invparty.*
+--,'------------------'
+--,indv.*,'----------------'
+--,b.*
+
+from ALDWH_SOURCE..CRS02P invparty
+join ALDWH_SOURCE..CRS03P indv on indv.IPIDCRA = invparty.IPIDCRA 
+join ALDWH_SOURCE..gfpf cust_equ on rtrim(ltrim(cust_equ.GFCUS)) + rtrim(ltrim(cust_equ.GFCLC)) = rtrim(ltrim(cast(invparty.IPIDCRA as varchar(7))))
+join DWHSORTRG..Classification class on ClassificationCd collate Greek_CI_AS = invparty.CRCVA and ClassificationSchemeId=55
+join DWHSORTRG..InvolvedParty inv2 on inv2.UniqueIdInSourceSystem = convert(varchar(7),invparty.CRCTA)
+left join ALDWH_SOURCE..CRS35P on CRS35P.IPIDCRA = indv.IPIDCRA --and cr9qa in ('PAS','FID') 
+and  CRS35P.cr9ta > '20180101'
+left join ALDWH_SOURCE..SCPF account on account.SCAN collate SQL_Latin1_General_CP1_CI_AS  = cust_equ.GFCPNC and account.SCAS <= 999 --and sccad = 0
+          ---and account.SCOAD > 1170101
+
+left join (select CRS05P.cr6qa,CRS13P.IPIDCRA,CRS13P.CR1D5A from ALDWH_SOURCE.DBO.CRS05P 
+
+           join ALDWH_SOURCE.DBO.CRS13P on CRS05P.CR6FA = CRS13P.CR6FA and rtrim(ltrim(CR1D5A)) in ('D01','D02','D12','541')) joinaccount
+
+            on joinaccount.IPIDCRA = indv.IPIDCRA --and len(joinaccount.cr6qa)= 13
+
+left join (SELECT * FROM (
+			 select kontakt.IPIDCRA,--kontakt.CR8TA
+			 kontakt.CR10SA tipi,--kontakt.CRSHA,
+			 kontaktinfo.CRURA from [ALDWH_SOURCE].[dbo].[CRS32P]  kontakt 
+ 
+			 join ALDWH_SOURCE..CRS06P  kontaktinfo on kontakt.CR8TA = kontaktinfo.CR8TA and CR9UA = '1'-- and kontakt.ipidcra = '1272577'
+		) as s
+		PIVOT
+		(
+			max(crura)
+			FOR s.tipi IN (HOM,CON,OFC,MAL,EDR,EGK)
+		)AS pvt) as kontaktinfo on kontaktinfo.IPIDCRA = indv.IPIDCRA  
+
+--- te rejat
+left join (select 
+		IPIDCRA,crs06p.CR8TA,crgoa [country ],crgpa [district],crgqa [city/Area],crgra [street]
+ from [ALDWH_SOURCE].[dbo].[CRS32P] 
+		join ALDWH_SOURCE..CRS06P on CRS32P.CR8TA = CRS06P.CR8TA
+		where CR10QA = 'PST') adresa1 on adresa1.IPIDCRA = indv.IPIDCRA
+		--IPIDCRA = '102693'
+
+left join (		select 
+		IPIDCRA,crs06p.CR8TA,crgoa [country ],crgpa [city/Area],crgqa [Number],crgra [street]
+ from [ALDWH_SOURCE].[dbo].[CRS32P] 
+		join ALDWH_SOURCE..CRS06P on CRS32P.CR8TA = CRS06P.CR8TA
+		where CR10QA = 'TEL' ) telefoni on telefoni.IPIDCRA = indv.IPIDCRA
+		
+
+left join (		select 
+		IPIDCRA,crs06p.CR8TA,crgoa [country ],crgpa [district],crgqa [city/Area],crgra [street]
+ from [ALDWH_SOURCE].[dbo].[CRS32P] 
+		join ALDWH_SOURCE..CRS06P on CRS32P.CR8TA = CRS06P.CR8TA
+		where CR10QA = 'fre') adresa2 on adresa2.IPIDCRA = indv.IPIDCRA
+		
+
+
+
+left join [ALDWH_SOURCE].[dbo].[CRS42P] b on b.IPIDCRA = invparty.IPIDCRA and b.CR9QA = '033' and (b.CRSTA <> '' or b.CRSTA is null)
+left join [ALDWH_SOURCE].[dbo].[CRS42P] c on c.IPIDCRA = invparty.IPIDCRA and c.CR9QA = '031' --and (b.CRSTA <> '' or b.CRSTA is null)
+left join [ALDWH_SOURCE].[dbo].[CRS42P] fatca on fatca.IPIDCRA = invparty.IPIDCRA and fatca.CR9QA = '032' 
+left join (SELECT * FROM (
+			 select kontakt.IPIDCRA,--kontakt.CR8TA
+			 kontakt.CR10SA tipi,--kontakt.CRSHA,
+			 kontaktinfo.CRURA [tel] from [ALDWH_SOURCE].[dbo].[CRS32P]  kontakt 
+			 join ALDWH_SOURCE..CRS06P  kontaktinfo on kontakt.CR8TA = kontaktinfo.CR8TA and kontaktinfo.CR10QA = 'Tel'--CR9UA = '1'-- and kontakt.ipidcra = '1272577'
+		) a)  tel on tel.IPIDCRA = indv.IPIDCRA
+
+left join DWHSORTRG..Arrangement arr on rtrim(ltrim(arr.UniqueIdInSourceSystem)) collate Greek_CI_AS = (rtrim(ltrim(account.SCAB)) + rtrim(ltrim(account.scan)) + rtrim(ltrim(account.SCAS)))
+left join ALDWH_SOURCE..v5pf on (V5ABD collate SQL_Latin1_General_CP1_CI_AS +v5and collate SQL_Latin1_General_CP1_CI_AS +v5asd collate SQL_Latin1_General_CP1_CI_AS) = (SCAB+scan+SCAS) and v5tdt collate SQL_Latin1_General_CP1_CI_AS = 'D'
+left join DWHSORTRG..Arrangement arr2 on rtrim(ltrim(arr2.UniqueIdInSourceSystem)) = V5PF.V5BRNM+' '+V5PF.V5DLP+'-'+V5PF.V5DLR
+left join DWHSORTRG..ArrangementXClassification arrclass on 
+case when account.scas >= 200 then arr2.ArrangementId
+ else arr.ArrangementId end = arrclass.ArrangementId 
+ 
+ and arrclass.ClassificationSchemeId = 14 and arrclass.EffectiveDate <= '20180430' and arrclass.EndDate >= '20180430'
+ left join DWHSORTRG..v_ArrangementLifeCycleStatus arrstatus on arrstatus.ArrangementLifeCycleStatusId = arrclass.ClassificationId
+ left join (select accunit.ArrangementId [ArrangementID], CurrencyId [Ccy] ,amount [Amount] 
+                from [DWHSORTRG].[dbo].[AccountingUnitBalance] accunit
+          join DWHSORTRG..v_AccountingUnitType v_account on accunit.AccountingUnitTypeId = v_account.AccountingUnitTypeId
+and accunit.EffectiveDate <= '20180430' and accunit.EndDate >= '20180430'
+  and v_account.AccountingUnitTypeCd in ('LDG','CAP')) d on d.[ArrangementID] =  case when account.scas >= 200 then arr2.ArrangementId
+ 
+ else arr.ArrangementId end
+
+left join DWHSORTRG..v_Currency currency on currency.CurrencyId = d.Ccy
+
+
+where 
+
+ CASE  WHEN LTRIM(RTRIM(account.SCOAD)) = '0' THEN ''
+			    WHEN LTRIM(RTRIM(account.SCOAD)) = '' THEN ''
+			    WHEN LTRIM(RTRIM(account.SCOAD)) IS NULL THEN ''
+			    WHEN LEN(LTRIM(RTRIM(account.SCOAD))) = 6 THEN CONVERT(DATE, '19' + LTRIM(RTRIM(account.SCOAD)), 112)
+			    WHEN account.SCOAD = '991112' THEN '1999-11-12'
+			    --when account.SCOAD = '990101'
+			    ELSE CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(account.SCOAD)), 2, 6), 112)
+    END > '20180101' and 
+
+	  CASE  WHEN LTRIM(RTRIM(account.SCOAD)) = '0' THEN ''
+			    WHEN LTRIM(RTRIM(account.SCOAD)) = '' THEN ''
+			    WHEN LTRIM(RTRIM(account.SCOAD)) IS NULL THEN ''
+			    WHEN LEN(LTRIM(RTRIM(account.SCOAD))) = 6 THEN CONVERT(DATE, '19' + LTRIM(RTRIM(account.SCOAD)), 112)
+			    WHEN account.SCOAD = '991112' THEN '1999-11-12'
+			    --when account.SCOAD = '990101'
+			    ELSE CONVERT(DATE, '20' + SUBSTRING(LTRIM(RTRIM(account.SCOAD)), 2, 6), 112)
+    END < '20180501' and
+
+-----Kushti per individet tek crs02p  invparty.CRCKA = 'I' 
+-----Kushti per te perjashtuar walk in customers
+---- kushti citizenship indv.CRDOA = 'US'
+invparty.CRCKA = 'I' and CRCSA <> 'WLK' and account.scas not in ('095','098')
+and ((fatca.CR9QA = '032' and fatca.CRSTA = 'US Person') 
+or indv.CRDOA = 'US' 
+or c.CRSTA='US' 
+or concat(kontaktinfo.HOM,kontaktinfo.CON,kontaktinfo.OFC,kontaktinfo.MAL,kontaktinfo.EDR,kontaktinfo.EGK) collate SQL_Latin1_General_CP1_CI_AS  like '% USA%' 
+or concat(kontaktinfo.HOM,kontaktinfo.CON,kontaktinfo.OFC,kontaktinfo.MAL,kontaktinfo.EDR,kontaktinfo.EGK) collate SQL_Latin1_General_CP1_CI_AS  like '%,USA%'
+or concat(kontaktinfo.HOM,kontaktinfo.CON,kontaktinfo.OFC,kontaktinfo.MAL,kontaktinfo.EDR,kontaktinfo.EGK) collate SQL_Latin1_General_CP1_CI_AS  like '%, USA%'
+
+or CRS35P.CRGGA ='US'
+---te rejat
+or CONCAT (adresa1.street,adresa1.[city/Area],adresa1.district,adresa1.[country ]) collate SQL_Latin1_General_CP1_CI_AS  like '% USA%'
+or CONCAT (adresa1.street,adresa1.[city/Area],adresa1.district,adresa1.[country ]) collate SQL_Latin1_General_CP1_CI_AS  like '%,USA%'
+or CONCAT (adresa1.street,adresa1.[city/Area],adresa1.district,adresa1.[country ]) collate SQL_Latin1_General_CP1_CI_AS  like '%, USA%'
+or CONCAT (adresa2.street,adresa2.[city/Area],adresa2.district,adresa2.[country ]) collate SQL_Latin1_General_CP1_CI_AS  like '% USA%'
+or CONCAT (adresa2.street,adresa2.[city/Area],adresa2.district,adresa2.[country ]) collate SQL_Latin1_General_CP1_CI_AS  like '%,USA%'
+or CONCAT (adresa2.street,adresa2.[city/Area],adresa2.district,adresa2.[country ]) collate SQL_Latin1_General_CP1_CI_AS  like '%, USA%'
+or telefoni.[country ] like '% USA%'
+or telefoni.[country ] like '%,USA%'
+or telefoni.[country ] like '%, USA%'
+or telefoni.[country ] like '001%'
+or telefoni.[country ] like '+1%'
+or telefoni.[country ] like '01%'
+or telefoni.Number like '% USA%'
+or telefoni.Number like '%,USA%'
+or telefoni.Number like '%, USA%'
+or telefoni.Number like '001%'
+or telefoni.Number like '+1%'
+or telefoni.Number like '01%' 
+)
+
+--and invparty.IPIDCRA = '102693'
+
+---crgoa country 
+---crgpa district
+---crgqa city/Area
+---crgra street
+
+---------
+---crgoa number
+---crgqa number
+
+--and invparty.IPIDCRA = '1316652'
+
+
+
+order by [Basic]
+
+
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  Query 7-TRIAL BALANCE
+
+--ASSETS
+--===============================================================================
+declare @date as float
+set @date='20181231'
+
+
+
+Select '
+
+
+ASSETS',1
+
+union  all
+
+
+
+select a.* from
+(select '         '+[description] [decr]
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in ('Current accounts CB','Cash in hand','Balances with the Central Bank','Statutory reserves')
+  --
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Cash in hand and Balances with Central Bank' Total ,
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in ('Current accounts TB','Cash in hand','Balances with the Central Bank','Statutory reserves')
+) a
+ 
+ 
+ --------------END OF Cash in hand and Balances with Central Bank
+
+
+union all
+
+select b.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Treasury Bills','Discounts/premiumsTB','Accrued interest TB','Provision TB')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Investment securities held to maturity ' ,
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Treasury Bills','Discounts/premiumsTB','Accrued interest TB','Provision TB')
+
+  )b
+
+
+
+  --END OF Investment securities held to maturity
+
+
+
+  union all
+
+   
+ select 
+  
+  'Current accounts  due from Banks' ,
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('   Current accounts  due from Banks Resident','   Current accounts  due from Banks Non Resident')
+
+
+  union all 
+
+select c.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('   Current accounts  due from Banks Resident','   Current accounts  due from Banks Non Resident','Term placements with banks:','in foreign currency (Resident Banks) ','local currency (Resident banks)','in foreign currency (Non - Resident Banks) ','Loans  to financial institutions')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Due from Banks' ,
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('   Current accounts  due from Banks Resident','   Current accounts  due from Banks Non Resident','Term placements with banks:','in foreign currency (Resident Banks) ','local currency (Resident banks)','in foreign currency (Non - Resident Banks) ','Loans  to financial institutions')
+
+  )c
+
+
+
+  ----------------END OF 'Due from Banks
+
+  union all
+
+  select d.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+ ('Government Bonds','Accrued Interest GB','Discount/premium GB','Provisions for depreciation GB')
+   group by [description]
+
+
+
+
+
+  union 
+
+  select 
+  
+  'Government Bonds',
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+ ('Government Bonds','Accrued Interest GB','Discount/premium GB','Provisions for depreciation GB')
+
+  )d
+
+
+  union all 
+
+  select e.* from (select '         '+[description] descr
+,round(cast((sum([Balance _ALL]) ) as float),2) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and advances to customers ','Interest Accrued Loans and advances to customers','Provision for loan losses')
+   group by [description]
+
+  union 
+
+  select 
+  
+  'Loans and advances to customers',
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and advances to customers ','Interest Accrued Loans and advances to customers','Provision for loan losses')
+  )e
+
+
+  union all 
+
+    select f.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Total Cost','Total Accumulated Depreciation')
+   group by [description]
+
+  union 
+
+  select 
+  
+  'Total Tangible and intangible fixed assets',
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Total Cost','Total Accumulated Depreciation')
+
+  )f
+
+    union all 
+
+    select h.* from (select [description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] ='Property taken through legal procedures'
+   group by [description]
+
+ 
+
+  )h
+
+
+
+
+  union all 
+
+    select g.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Prepaid income taxes','Leasehold improvements, net','Prepaid expenses','Other Assets (Prepaid Bailiff Expenses)','Other Assets (Suspense Accounts)','Other Assets')
+   group by [description]
+
+  union 
+
+  select 
+  
+  'Other assets',
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Prepaid income taxes','Leasehold improvements, net','Prepaid expenses','Other Assets (Prepaid Bailiff Expenses)','Other Assets (Suspense Accounts)','Other Assets')
+  )g
+
+
+
+
+
+  --+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  --+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  --Total Assets
+
+
+  union all 
+
+
+
+ 
+ Select 'Total Assets',sum(all_assets.Total) assets_total from (
+select a.* from
+(select '         '+[description] [decr]
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in ('Current accounts CB','Cash in hand','Balances with the Central Bank','Statutory reserves')
+  --
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Cash in hand and Balances with Central Bank' Total ,
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in ('Current accounts TB','Cash in hand','Balances with the Central Bank','Statutory reserves')
+) a
+ 
+ 
+ --------------END OF Cash in hand and Balances with Central Bank
+
+
+union all
+
+select b.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Treasury Bills','Discounts/premiumsTB','Accrued interest TB','Provision TB')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Investment securities held to maturity ' ,
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Treasury Bills','Discounts/premiumsTB','Accrued interest TB','Provision TB')
+
+  )b
+
+
+
+  --END OF Investment securities held to maturity
+
+
+
+  union all
+
+   
+ select 
+  
+  'Current accounts  due from Banks' ,
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('   Current accounts  due from Banks Resident','   Current accounts  due from Banks Non Resident')
+
+
+  union all 
+
+select c.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('   Current accounts  due from Banks Resident','   Current accounts  due from Banks Non Resident','Term placements with banks:','in foreign currency (Resident Banks) ','local currency (Resident banks)','in foreign currency (Non - Resident Banks) ','Loans  to financial institutions')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Due from Banks' ,
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('   Current accounts  due from Banks Resident','   Current accounts  due from Banks Non Resident','Term placements with banks:','in foreign currency (Resident Banks) ','local currency (Resident banks)','in foreign currency (Non - Resident Banks) ','Loans  to financial institutions')
+
+  )c
+
+
+
+  ----------------END OF 'Due from Banks
+
+  union all
+
+  select d.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+ ('Government Bonds','Accrued Interest GB','Discount/premium GB','Provisions for depreciation GB')
+   group by [description]
+
+
+
+
+
+  union 
+
+  select 
+  
+  'Government Bonds',
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+ ('Government Bonds','Accrued Interest GB','Discount/premium GB','Provisions for depreciation GB')
+
+  )d
+
+
+  union all 
+
+  select e.* from (select '         '+[description] descr
+,round(cast((sum([Balance _ALL]) ) as float),2) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and advances to customers ','Interest Accrued Loans and advances to customers','Provision for loan losses')
+   group by [description]
+
+  union 
+
+  select 
+  
+  'Loans and advances to customers',
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and advances to customers ','Interest Accrued Loans and advances to customers','Provision for loan losses')
+  )e
+
+
+  union all 
+
+    select f.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Total Cost','Total Accumulated Depreciation')
+   group by [description]
+
+  union 
+
+  select 
+  
+  'Total Tangible and intangible fixed assets',
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Total Cost','Total Accumulated Depreciation')
+
+  )f
+
+    union all 
+
+    select h.* from (select [description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2)  [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] ='Property taken through legal procedures'
+   group by [description]
+
+ 
+
+  )h
+
+
+
+
+  union all 
+
+    select g.* from (select '         '+[description] descr
+, round(cast((sum([Balance _ALL]) ) as float),2) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Prepaid income taxes','Leasehold improvements, net','Prepaid expenses','Other Assets (Prepaid Bailiff Expenses)','Other Assets (Suspense Accounts)','Other Assets')
+   group by [description]
+
+  union 
+
+  select 
+  
+  'Other assets',
+  round(cast((sum([Balance _ALL]) ) as float),2)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Prepaid income taxes','Leasehold improvements, net','Prepaid expenses','Other Assets (Prepaid Bailiff Expenses)','Other Assets (Suspense Accounts)','Other Assets')
+  )g
+
+)all_assets
+
+
+where all_assets.decr in ('Cash in hand and Balances with Central Bank','Investment securities held to maturity ', 'Due from Banks', 'Government Bonds', 'Loans and advances to customers', 'Total Tangible and intangible fixed assets', 'Other assets','Property taken through legal procedures')
+
+
+
+
+
+
+--======================================================================================================================================================================
+--======================================================================================================================================================================
+--======================================================================================================================================================================
+--======================================================================================================================================================================
+
+
+union all 
+
+select '
+
+LIABILITIES AND EQUITY
+',2
+
+
+
+union all 
+
+select '
+
+
+LIABILITIES
+',2.1
+union all
+
+select i.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts due to banks','Due to Central Bank','Deposits due to banks','Borrowings')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Due to banks' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts due to banks','Due to Central Bank','Deposits due to banks','Borrowings')
+) i
+
+union all 
+
+
+select j.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('T. Bills sold under repurchase agreements','Accrued interest TB under Rep Agreement')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'T. Bills sold under repurchase agreements' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('T. Bills sold under repurchase agreements','Accrued interest TB under Rep Agreement')
+) j
+
+
+union all 
+
+select k.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts ','Savings accounts','Time deposits','Other accounts','Public accounts')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Deposits to customers ' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts ','Savings accounts','Time deposits','Other accounts','Public accounts')
+) k
+
+
+union all
+
+
+
+select l.* from
+(select 'Reserve fund for Loan (Standard&S.mention)' [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] ='Reserve fund for Loan (Standard&S.mention)'
+  group by [description]
+
+
+) l
+
+
+
+union all 
+
+
+  select 
+  
+  'Other reserve fund'  Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] ='Other reserve fund' 
+
+
+
+
+  union all 
+
+select ll.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Accrued expenses','Taxes payable','Other liabilities (Suspense Accounts)','Other liabilities') 
+  group by [description] 
+
+  union 
+
+  select 
+  
+   'Other liabilities' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Accrued expenses','Taxes payable','Other liabilities (Suspense Accounts)','Other liabilities') 
+) ll
+
+
+
+--=======================================================================
+
+union all 
+
+
+ Select 'Total Liabilities',round(sum(all_liabilities.Total),2) liabilities_total from(
+
+select i.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts due to banks','Due to Central Bank','Deposits due to banks','Borrowings')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Due to banks' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts due to banks','Due to Central Bank','Deposits due to banks','Borrowings')
+) i
+
+union all 
+
+
+select j.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('T. Bills sold under repurchase agreements','Accrued interest TB under Rep Agreement')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'T. Bills sold under repurchase agreements' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('T. Bills sold under repurchase agreements','Accrued interest TB under Rep Agreement')
+) j
+
+
+union all 
+
+select k.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts ','Savings accounts','Time deposits','Other accounts','Public accounts')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Deposits to customers ' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts ','Savings accounts','Time deposits','Other accounts','Public accounts')
+) k
+
+
+union all
+
+
+
+select l.* from
+(select 'Reserve fund for Loan (Standard&S.mention)' [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] ='Reserve fund for Loan (Standard&S.mention)'
+  group by [description]
+
+
+) l
+
+
+
+union all 
+
+
+  select 
+  
+  'Other reserve fund'  Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] ='Other reserve fund' 
+
+
+
+
+  union all 
+
+select ll.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Accrued expenses','Taxes payable','Other liabilities (Suspense Accounts)','Other liabilities') 
+  group by [description] 
+
+  union 
+
+  select 
+  
+   'Other liabilities' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Accrued expenses','Taxes payable','Other liabilities (Suspense Accounts)','Other liabilities') 
+) ll
+
+)all_liabilities
+
+
+where all_liabilities.decr in ( 'Due to banks','T. Bills sold under repurchase agreements','Deposits to customers ','Reserve fund for Loan (Standard&S.mention)','Other reserve fund','Other liabilities')
+
+--===============================================================================================================
+--===============================================================================================================
+--===============================================================================================================
+--===============================================================================================================
+--===============================================================================================================
+
+
+union all 
+
+select '
+
+ 
+ Equity
+',2.2
+
+
+union all
+
+select p.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 and  [description] ='Accumulated profit/Loss' then round(cast((sum([Balance _ALL])  ) as float),2)
+
+				else round(cast((sum([Balance _ALL])*(-1) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Registered Paid-up capital','Share premium','Capital Reserve','Translation reserves','Accumulated profit/Loss','Net income for the year')
+  group by [description]
+
+  union all
+
+
+
+    select '         ' + 'Net income for the year'
+  ,SUM(net.shuma)*(-1)
+  --sum(Balance_ALL)
+  from 
+
+ ( Select 
+  round(cast((sum([Balance _ALL]) ) as float),2) shuma
+  
+  FROM [Winbank].[dbo].[Trial] t
+
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and SUBSTRING(t.account,1,1)=7 and t.[Date]=@date
+
+
+  union 
+    select
+  round(cast((sum([Balance _ALL]) ) as float),2) shuma 
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and SUBSTRING(t.account,1,1)=6 and t.[Date]=@date
+  )net
+
+) p
+
+
+
+
+
+
+
+--=================================================================
+--=================================================================
+--=================================================================
+--=================================================================
+
+union all 
+
+Select ' Total Equity'
+, sum(total_equity.Total) total1
+
+from (
+
+select p.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 and  [description] ='Accumulated profit/Loss' then round(cast((sum([Balance _ALL])  ) as float),2)
+
+				else round(cast((sum([Balance _ALL])*(-1) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Registered Paid-up capital','Share premium','Capital Reserve','Translation reserves','Accumulated profit/Loss','Net income for the year')
+  group by [description]
+
+  union all
+
+
+
+    select '         ' + 'Net income for the year'
+  ,SUM(net.shuma)*(-1) [Total]
+  --sum(Balance_ALL)
+  from 
+
+ ( Select 
+  round(cast((sum([Balance _ALL]) ) as float),2) shuma
+  
+  FROM [Winbank].[dbo].[Trial] t
+
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and SUBSTRING(t.account,1,1)=7 and t.[Date]=@date
+
+
+  union 
+    select
+  round(cast((sum([Balance _ALL]) ) as float),2) shuma
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and SUBSTRING(t.account,1,1)=6 and t.[Date]=@date
+  )net
+
+) p
+
+)total_equity
+
+
+
+
+
+--Total Liability and Equity ====================================================
+
+ --====================================================
+ --====================================================
+ --====================================================
+
+ union all 
+
+
+
+ 
+
+select 'TOTAL LIABILITIES AND EQUITY'
+,sum(zh.total)
+
+
+
+from 
+(
+ Select ' Total Equity' equity
+, sum(total_equity.Total) total
+
+from (
+
+select p.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 and  [description] ='Accumulated profit/Loss' then round(cast((sum([Balance _ALL])  ) as float),2)
+
+				else round(cast((sum([Balance _ALL])*(-1) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Registered Paid-up capital','Share premium','Capital Reserve','Translation reserves','Accumulated profit/Loss','Net income for the year')
+  group by [description]
+
+  union all
+
+
+
+    select '         ' + 'Net income for the year'
+  ,SUM(net.shuma)*(-1) [Total]
+  --sum(Balance_ALL)
+  from 
+
+ ( Select 
+  round(cast((sum([Balance _ALL]) ) as float),2) shuma
+  
+  FROM [Winbank].[dbo].[Trial] t
+
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and SUBSTRING(t.account,1,1)=7 and t.[Date]=@date
+
+
+  union 
+    select
+  round(cast((sum([Balance _ALL]) ) as float),2) shuma
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and SUBSTRING(t.account,1,1)=6 and t.[Date]=@date
+  )net
+
+) p
+
+)total_equity
+
+
+
+union all 
+
+
+  Select 'Total Liabilities',round(sum(all_liabilities.Total),2) liabilities_total from(
+
+select i.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts due to banks','Due to Central Bank','Deposits due to banks','Borrowings')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Due to banks' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts due to banks','Due to Central Bank','Deposits due to banks','Borrowings')
+) i
+
+union all 
+
+
+select j.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('T. Bills sold under repurchase agreements','Accrued interest TB under Rep Agreement')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'T. Bills sold under repurchase agreements' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('T. Bills sold under repurchase agreements','Accrued interest TB under Rep Agreement')
+) j
+
+
+union all 
+
+select k.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts ','Savings accounts','Time deposits','Other accounts','Public accounts')
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Deposits to customers ' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Current accounts ','Savings accounts','Time deposits','Other accounts','Public accounts')
+) k
+
+
+union all
+
+
+
+select l.* from
+(select 'Reserve fund for Loan (Standard&S.mention)' [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] ='Reserve fund for Loan (Standard&S.mention)'
+  group by [description]
+
+
+) l
+
+
+
+union all 
+
+
+  select 
+  
+  'Other reserve fund'  Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] ='Other reserve fund' 
+
+
+
+
+  union all 
+
+select ll.* from
+(select '         '+[description] [decr]
+, case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end [Total]  
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Accrued expenses','Taxes payable','Other liabilities (Suspense Accounts)','Other liabilities') 
+  group by [description] 
+
+  union 
+
+  select 
+  
+   'Other liabilities' Total ,
+  case when (sum([Balance _ALL]) ) < 0 then round(cast((sum([Balance _ALL])*(-1) ) as float),2)
+				else round(cast((sum([Balance _ALL]) ) as float),2) end
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in
+('Accrued expenses','Taxes payable','Other liabilities (Suspense Accounts)','Other liabilities') 
+) ll
+
+)all_liabilities
+
+
+where all_liabilities.decr in ( 'Due to banks','T. Bills sold under repurchase agreements','Deposits to customers ','Reserve fund for Loan (Standard&S.mention)','Other reserve fund','Other liabilities')
+
+)zh
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  Query 7-TRIAL P&L
+
+
+  
+declare @date as float
+set @date='20181231'
+
+
+
+
+
+select a.* from
+(select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+  ('Interest income from customer operation','Interest income from Treasury Bonds','Interest income from Treasury Bills','Interest income from inter-bank operations')
+  --
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Interest income' Total ,
+ cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('Interest income from customer operation','Interest income from Treasury Bonds','Interest income from Treasury Bills','Interest income from inter-bank operations')
+) a
+
+
+union all 
+
+
+
+select b.* from
+(select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Interest expense from inter-bank operations','Interest expense from customer operations','Losses from securities')  --
+  group by [description]
+
+  union all
+
+
+
+  select  '         '+'Interest Expenses', sum(losses.Total)   from
+  (select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Interest expense from inter-bank operations','Interest expense from customer operations','Losses from securities')  --
+  group by [description]
+  )losses
+  ) b
+
+  --==========================================================================================================
+  union all 
+
+  --NET INTERST INCOME
+  select 'Net interest income',
+
+sum(net.total1)
+
+ from 
+
+(
+    select 
+  
+  'Interest income' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) total1
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('Interest income from customer operation','Interest income from Treasury Bonds','Interest income from Treasury Bills','Interest income from inter-bank operations')
+
+
+  union 
+
+
+
+  select b.* from
+(
+
+
+  select  '         '+'Interest Expenses' decr, sum(losses.Total) total   from
+  (select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as numeric) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Interest expense from inter-bank operations','Interest expense from customer operations','Losses from securities')  --
+  group by [description]
+  )losses
+  ) b
+
+
+  ) net
+
+
+  --END NET INTEREST INCOME
+
+
+  union all 
+
+-- FEE INCOME
+
+  select c.* from
+(select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Commissions from transfers and payments','Commissions on loans and advances','Account Maintenance fee','Others Commissions')
+  --
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Total Commisions (income)' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Commissions from transfers and payments','Commissions on loans and advances','Account Maintenance fee','Others Commissions')
+) c
+
+
+
+--END FEE INCOME
+union all 
+
+
+
+  select d.* from
+(select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Loans and credit cards Commissions','Other Commissions expense')
+  --
+  group by [description]
+
+  union 
+
+  select 
+  
+  '         '+'Total Commisions (Expense)' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and credit cards Commissions','Other Commissions expense')
+) d
+
+
+
+
+--==================== End of total commisions
+
+union all
+
+select 'Net fee and commission income' ,round(cast(sum(fee.total) as numeric),2) from (
+
+  select 
+  
+  '         '+'Total Commisions (Expense)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and credit cards Commissions','Other Commissions expense')
+
+
+union all 
+
+
+  select 
+  
+  'Total Commisions (income)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Commissions from transfers and payments','Commissions on loans and advances','Account Maintenance fee','Others Commissions')
+
+
+)fee
+
+
+
+-- end of Fee and commisions income,net
+
+union all 
+
+
+
+  select e.* from
+(select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Loan Losses (WOFF)','Recovery for loan losses','Other income from leasing operations','Other operating income')
+  --
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Other income /(expenses), net' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loan Losses (WOFF)','Recovery for loan losses','Other income from leasing operations','Other operating income')
+) e
+
+
+--== end of other income/expenses,net
+
+union all 
+
+
+
+select [description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Foreign exchange gains, net')
+  --
+  group by [description]
+
+
+
+  --===========End of Foreign exchange gains,net
+
+
+
+ -----------------------------------++++++++++++++++++OPERATING INCOME
+
+ union all
+
+ select 'OPERATING INCOME' descr,sum(op_income.total) from (
+
+   select 'Net interest income' descr,
+
+sum(net.total1) total
+
+ from 
+
+(
+    select 
+  
+  'Interest income' decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) total1
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('Interest income from customer operation','Interest income from Treasury Bonds','Interest income from Treasury Bills','Interest income from inter-bank operations')
+
+
+  union 
+
+
+
+  select b.* from
+(
+
+
+  select  '         '+'Interest Expenses' decr, sum(losses.Total) total   from
+  (select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as numeric) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Interest expense from inter-bank operations','Interest expense from customer operations','Losses from securities')  --
+  group by [description]
+  )losses
+  ) b
+
+
+  ) net
+
+  union all
+
+select 'Net fee and commission income' ,round(cast(sum(fee.total) as numeric),2) from (
+
+  select 
+  
+  '         '+'Total Commisions (Expense)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and credit cards Commissions','Other Commissions expense')
+
+
+union all 
+
+
+  select 
+  
+  'Total Commisions (income)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Commissions from transfers and payments','Commissions on loans and advances','Account Maintenance fee','Others Commissions')
+
+
+)fee
+
+
+union 
+
+
+
+  select 
+  
+  'Other income /(expenses), net' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loan Losses (WOFF)','Recovery for loan losses','Other income from leasing operations','Other operating income')
+
+
+union all 
+
+
+
+select [description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Foreign exchange gains, net')
+  --
+  group by [description]
+
+
+
+  )op_income
+
+
+
+
+
+
+
+  --=============================END OF OPERATING INCOME===========================================
+
+
+
+  
+union all 
+
+
+
+  select f.* from
+(select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  (
+'  Salary wages+  Bonus/ Incentives',
+'  Social insurance',
+'  Life insurance',
+'  Trainings',
+'  Other personal exp')
+  --
+  
+
+
+  
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Personnel expenses' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  (
+'  Salary wages+  Bonus/ Incentives',
+'  Social insurance',
+'  Life insurance',
+'  Trainings',
+'  Other personal exp')
+  --
+
+) f
+
+
+
+--END OF PERSONEL EXPENSES
+
+
+--union all 
+
+
+
+--select [description] [decr]
+--, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+--FROM [Winbank].[dbo].[Trial] t
+--  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+--  where [description] in 
+--  ('Taxes')
+
+--  group by  [description]
+
+
+--  --=====END OF TAXES
+
+  union all 
+
+    select g.* from
+(select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+('Administrative Expenses (ASD)','Administrative Expenses (Card related expenses)','Administrative Expenses (Consumables)','Administrative Expenses (Expenses to third parties)','Administrative Expenses (Insurance)','Administrative Expenses (Maintenance Expenses)','Administrative Expenses (Marketing)','Administrative Expenses (Other)','Administrative Expenses (Rent)','Administrative Expenses (Resolution Fund)','Administrative Expenses (Security)','Administrative Expenses (Sponsorship)','Administrative Expenses (Stationary)','Administrative Expenses (Telecomunications)','Administrative Expenses (Travel)','Administrative Expenses (Utilities)')  --
+  
+
+
+  
+  group by [description]
+
+  union 
+
+  select 
+  
+  'Other operating expenses' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Administrative Expenses (ASD)','Administrative Expenses (Card related expenses)','Administrative Expenses (Consumables)','Administrative Expenses (Expenses to third parties)','Administrative Expenses (Insurance)','Administrative Expenses (Maintenance Expenses)','Administrative Expenses (Marketing)','Administrative Expenses (Other)','Administrative Expenses (Rent)','Administrative Expenses (Resolution Fund)','Administrative Expenses (Security)','Administrative Expenses (Sponsorship)','Administrative Expenses (Stationary)','Administrative Expenses (Telecomunications)','Administrative Expenses (Travel)','Administrative Expenses (Utilities)')  --
+
+
+) g
+
+--===============END OF OTHER OPERATING EXPENSES
+
+union all 
+
+select 
+  
+  [description] decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('EXTRAORDINARY EXPENSES')
+  group by  [description] 
+
+
+
+  --===============END OF EXTRAORDINARY EXPENSES==========
+
+
+
+
+  union all 
+
+
+  select 'OPERATING EXPENSE',cast (sum(opexp.Total) as numeric) from  ( 
+
+
+
+
+select 
+  
+  [description] decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('EXTRAORDINARY EXPENSES')
+  group by  [description] 
+
+union all 
+
+
+ select 
+  
+  'Other operating expenses' Decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Administrative Expenses (ASD)','Administrative Expenses (Card related expenses)','Administrative Expenses (Consumables)','Administrative Expenses (Expenses to third parties)','Administrative Expenses (Insurance)','Administrative Expenses (Maintenance Expenses)','Administrative Expenses (Marketing)','Administrative Expenses (Other)','Administrative Expenses (Rent)','Administrative Expenses (Resolution Fund)','Administrative Expenses (Security)','Administrative Expenses (Sponsorship)','Administrative Expenses (Stationary)','Administrative Expenses (Telecomunications)','Administrative Expenses (Travel)','Administrative Expenses (Utilities)')  --
+  
+  union all 
+
+
+
+--select [description] [decr]
+--, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+--FROM [Winbank].[dbo].[Trial] t
+--  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+--  where [description] in 
+--  ('Taxes')
+
+--  group by  [description]
+
+
+--  union all 
+
+
+  select 
+  
+  'Personnel expenses'  decr,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  (
+'  Salary wages+  Bonus/ Incentives',
+'  Social insurance',
+'  Life insurance',
+'  Trainings',
+'  Other personal exp')
+  --
+
+
+
+) 
+
+opexp
+
+-----===================== END OF OPERATIONAL EXPENSES
+
+
+
+union all 
+
+
+
+select 'INCOME FROM OPERATIONS BEFORE PROVISIONS' decr,
+sum(ifobp.total) total from (
+
+
+  select 'OPERATING EXPENSE' decr ,cast (sum(opexp.Total) as numeric) total from  ( 
+
+
+
+
+select 
+  
+  [description] decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('EXTRAORDINARY EXPENSES')
+  group by  [description] 
+
+union all 
+
+
+ select 
+  
+  'Other operating expenses' Decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Administrative Expenses (ASD)','Administrative Expenses (Card related expenses)','Administrative Expenses (Consumables)','Administrative Expenses (Expenses to third parties)','Administrative Expenses (Insurance)','Administrative Expenses (Maintenance Expenses)','Administrative Expenses (Marketing)','Administrative Expenses (Other)','Administrative Expenses (Rent)','Administrative Expenses (Resolution Fund)','Administrative Expenses (Security)','Administrative Expenses (Sponsorship)','Administrative Expenses (Stationary)','Administrative Expenses (Telecomunications)','Administrative Expenses (Travel)','Administrative Expenses (Utilities)')  --
+  
+  union all 
+
+
+
+--select [description] [decr]
+--, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+--FROM [Winbank].[dbo].[Trial] t
+--  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+--  where [description] in 
+--  ('Taxes')
+
+--  group by  [description]
+
+
+--  union all 
+
+
+  select 
+  
+  'Personnel expenses'  decr,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  (
+'  Salary wages+  Bonus/ Incentives',
+'  Social insurance',
+'  Life insurance',
+'  Trainings',
+'  Other personal exp')
+  --
+
+
+
+) 
+
+opexp
+
+
+union all 
+
+
+
+select 'OPERATING INCOME' descr,sum(op_income.total) total from (
+
+   select 'Net interest income' descr,
+
+sum(net.total1) total
+
+ from 
+
+(
+    select 
+  
+  'Interest income' decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) total1
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('Interest income from customer operation','Interest income from Treasury Bonds','Interest income from Treasury Bills','Interest income from inter-bank operations')
+
+
+  union 
+
+
+
+  select b.* from
+(
+
+
+  select  '         '+'Interest Expenses' decr, sum(losses.Total) total   from
+  (select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as numeric) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Interest expense from inter-bank operations','Interest expense from customer operations','Losses from securities')  --
+  group by [description]
+  )losses
+  ) b
+
+
+  ) net
+
+  union all
+
+select 'Net fee and commission income' ,round(cast(sum(fee.total) as numeric),2) from (
+
+  select 
+  
+  '         '+'Total Commisions (Expense)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and credit cards Commissions','Other Commissions expense')
+
+
+union all 
+
+
+  select 
+  
+  'Total Commisions (income)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Commissions from transfers and payments','Commissions on loans and advances','Account Maintenance fee','Others Commissions')
+
+
+)fee
+
+
+union 
+
+
+
+  select 
+  
+  'Other income /(expenses), net' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loan Losses (WOFF)','Recovery for loan losses','Other income from leasing operations','Other operating income')
+
+
+union all 
+
+
+
+select [description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Foreign exchange gains, net')
+  --
+  group by [description]
+
+
+
+  )op_income
+
+
+
+
+  )ifobp
+
+
+
+
+  --========================end of INCOME FROM OPERATIONS BEFORE PROVISIONS-=================================
+
+
+
+
+  union all 
+
+
+select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+('Amortization of the rent building','Amortization and depreciation expenses','Provisions for loan losses','Other Provisions','Other Provisions Reversal','AFS provision')  --
+  
+
+
+  
+  group by [description]
+
+
+
+  --==============================================================================
+  union all 
+
+
+
+
+  select 'PROFIT BEFORE TAXATION
+',cast (sum(pbt.total) as numeric) from 
+(
+	
+	select 'INCOME FROM OPERATIONS BEFORE PROVISIONS' decr,
+sum(ifobp.total) total from (
+
+
+  select 'OPERATING EXPENSE' decr ,cast (sum(opexp.Total) as numeric) total from  ( 
+
+
+
+
+select 
+  
+  [description] decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('EXTRAORDINARY EXPENSES')
+  group by  [description] 
+
+union all 
+
+
+ select 
+  
+  'Other operating expenses' Decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Administrative Expenses (ASD)','Administrative Expenses (Card related expenses)','Administrative Expenses (Consumables)','Administrative Expenses (Expenses to third parties)','Administrative Expenses (Insurance)','Administrative Expenses (Maintenance Expenses)','Administrative Expenses (Marketing)','Administrative Expenses (Other)','Administrative Expenses (Rent)','Administrative Expenses (Resolution Fund)','Administrative Expenses (Security)','Administrative Expenses (Sponsorship)','Administrative Expenses (Stationary)','Administrative Expenses (Telecomunications)','Administrative Expenses (Travel)','Administrative Expenses (Utilities)')  --
+  
+  union all 
+
+
+
+--select [description] [decr]
+--, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+--FROM [Winbank].[dbo].[Trial] t
+--  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+--  where [description] in 
+--  ('Taxes')
+
+--  group by  [description]
+
+
+--  union all 
+
+
+  select 
+  
+  'Personnel expenses'  decr,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  (
+'  Salary wages+  Bonus/ Incentives',
+'  Social insurance',
+'  Life insurance',
+'  Trainings',
+'  Other personal exp')
+  --
+
+
+
+) 
+
+opexp
+
+
+union all 
+
+
+
+select 'OPERATING INCOME' descr,sum(op_income.total) total from (
+
+   select 'Net interest income' descr,
+
+sum(net.total1) total
+
+ from 
+
+(
+    select 
+  
+  'Interest income' decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) total1
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('Interest income from customer operation','Interest income from Treasury Bonds','Interest income from Treasury Bills','Interest income from inter-bank operations')
+
+
+  union 
+
+
+
+  select b.* from
+(
+
+
+  select  '         '+'Interest Expenses' decr, sum(losses.Total) total   from
+  (select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as numeric) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Interest expense from inter-bank operations','Interest expense from customer operations','Losses from securities')  --
+  group by [description]
+  )losses
+  ) b
+
+
+  ) net
+
+  union all
+
+select 'Net fee and commission income' ,round(cast(sum(fee.total) as numeric),2) from (
+
+  select 
+  
+  '         '+'Total Commisions (Expense)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and credit cards Commissions','Other Commissions expense')
+
+
+union all 
+
+
+  select 
+  
+  'Total Commisions (income)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Commissions from transfers and payments','Commissions on loans and advances','Account Maintenance fee','Others Commissions')
+
+
+)fee
+
+
+union 
+
+
+
+  select 
+  
+  'Other income /(expenses), net' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loan Losses (WOFF)','Recovery for loan losses','Other income from leasing operations','Other operating income')
+
+
+union all 
+
+
+
+select [description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Foreign exchange gains, net')
+  --
+  group by [description]
+
+
+
+  )op_income
+
+
+
+
+  )ifobp
+
+union all 
+
+
+select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+('Amortization of the rent building','Amortization and depreciation expenses','Provisions for loan losses','Other Provisions','Other Provisions Reversal','AFS provision')  --
+  group by [description]
+
+  )pbt
+  -----END OF PROFIT BEFORE TAXATION==========================================
+    union all 
+
+
+select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] ='Current income tax' 
+  --
+  
+
+
+  
+  group by [description]
+
+
+
+  ---------------==================== END OF CURRENT INCOME TAX
+  union all 
+
+
+  select 'NET PROFIT/ (LOSS)',sum(npl.total) from (
+
+
+
+   select 'PROFIT BEFORE TAXATION
+' decr,cast (sum(pbt.total) as numeric)total from 
+(
+	
+	select 'INCOME FROM OPERATIONS BEFORE PROVISIONS' decr,
+sum(ifobp.total) total from (
+
+
+  select 'OPERATING EXPENSE' decr ,cast (sum(opexp.Total) as numeric) total from  ( 
+
+
+
+
+select 
+  
+  [description] decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('EXTRAORDINARY EXPENSES')
+  group by  [description] 
+
+union all 
+
+
+ select 
+  
+  'Other operating expenses' Decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Administrative Expenses (ASD)','Administrative Expenses (Card related expenses)','Administrative Expenses (Consumables)','Administrative Expenses (Expenses to third parties)','Administrative Expenses (Insurance)','Administrative Expenses (Maintenance Expenses)','Administrative Expenses (Marketing)','Administrative Expenses (Other)','Administrative Expenses (Rent)','Administrative Expenses (Resolution Fund)','Administrative Expenses (Security)','Administrative Expenses (Sponsorship)','Administrative Expenses (Stationary)','Administrative Expenses (Telecomunications)','Administrative Expenses (Travel)','Administrative Expenses (Utilities)')  --
+  
+  union all 
+
+
+
+--select [description] [decr]
+--, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+--FROM [Winbank].[dbo].[Trial] t
+--  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+--  where [description] in 
+--  ('Taxes')
+
+--  group by  [description]
+
+
+--  union all 
+
+
+  select 
+  
+  'Personnel expenses'  decr,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) Total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  (
+'  Salary wages+  Bonus/ Incentives',
+'  Social insurance',
+'  Life insurance',
+'  Trainings',
+'  Other personal exp')
+  --
+
+
+
+) 
+
+opexp
+
+
+union all 
+
+
+
+select 'OPERATING INCOME' descr,sum(op_income.total) total from (
+
+   select 'Net interest income' descr,
+
+sum(net.total1) total
+
+ from 
+
+(
+    select 
+  
+  'Interest income' decr ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1) total1
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+  ('Interest income from customer operation','Interest income from Treasury Bonds','Interest income from Treasury Bills','Interest income from inter-bank operations')
+
+
+  union 
+
+
+
+  select b.* from
+(
+
+
+  select  '         '+'Interest Expenses' decr, sum(losses.Total) total   from
+  (select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as numeric) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Interest expense from inter-bank operations','Interest expense from customer operations','Losses from securities')  --
+  group by [description]
+  )losses
+  ) b
+
+
+  ) net
+
+  union all
+
+select 'Net fee and commission income' ,round(cast(sum(fee.total) as numeric),2) from (
+
+  select 
+  
+  '         '+'Total Commisions (Expense)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loans and credit cards Commissions','Other Commissions expense')
+
+
+union all 
+
+
+  select 
+  
+  'Total Commisions (income)' decr ,
+  cast((sum([Balance _ALL]) ) as float) *(-1) total
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Commissions from transfers and payments','Commissions on loans and advances','Account Maintenance fee','Others Commissions')
+
+
+)fee
+
+
+union 
+
+
+
+  select 
+  
+  'Other income /(expenses), net' Total ,
+  cast((sum([Balance _ALL]) ) as numeric) *(-1)
+  FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy and t.[Date]=@date
+  where [description] in 
+('Loan Losses (WOFF)','Recovery for loan losses','Other income from leasing operations','Other operating income')
+
+
+union all 
+
+
+
+select [description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+  
+('Foreign exchange gains, net')
+  --
+  group by [description]
+
+
+
+  )op_income
+
+
+
+
+  )ifobp
+
+union all 
+
+
+select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] in 
+('Amortization of the rent building','Amortization and depreciation expenses','Provisions for loan losses','Other Provisions','Other Provisions Reversal','AFS provision')  --
+  group by [description]
+
+  )pbt
+
+
+      union all 
+
+
+select '         '+[description] [decr]
+, cast((sum([Balance _ALL]) ) as float) * (-1) [Total]
+FROM [Winbank].[dbo].[Trial] t
+  join winbank..trial_mapping tm on tm.account=t.account and tm.ccy=t.ccy  and t.[Date]=@date
+  
+  where [description] ='Current income tax' 
+  group by [description] 
+
+)npl
+
+
+  ----====END OF NPL
